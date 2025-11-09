@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Turing Machine</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 ESP32 Turing Machine</h1>
+            <p class="subtitle">Simulador de Máquina de Turing Embarcada</p>
+        </header>
+
+        <!-- Seção 1: Configuração de Alfabetos -->
+        <section class="card">
+            <h2>📝 Configuração de Alfabetos</h2>
+
+            <div class="input-group">
+                <label for="machine-name">Nome da Máquina:</label>
+                <input type="text" id="machine-name" placeholder="Ex: Verificador de Palíndromo Binário" maxlength="100">
+                <small>Nome descritivo para identificar esta MT</small>
+            </div>
+
+            <div class="input-group">
+                <label for="machine-description">
+                    Descrição
+                    <button type="button" onclick="toggleDescription()" class="btn-toggle" style="font-size: 0.8rem; padding: 2px 8px; margin-left: 8px;">▼ Mostrar</button>
+                </label>
+                <textarea id="machine-description" placeholder="Ex: Verifica se uma string binária é um palíndromo" rows="2" maxlength="500" style="display: none;"></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="alphabet">Alfabeto de Entrada:</label>
+                <input type="text" id="alphabet" placeholder="Ex: 01" maxlength="20">
+                <small>Símbolos aceitos na entrada (apenas alfanuméricos)</small>
+            </div>
+
+            <div class="input-group">
+                <label for="tape-alphabet">Alfabeto Auxiliar:</label>
+                <input type="text" id="tape-alphabet" placeholder="Ex: xy" maxlength="20">
+                <small>Símbolos extras para manipulação. Símbolos '^' (início) e '_' (branco) já incluídos.</small>
+            </div>
+
+            <button id="generate-table" class="btn btn-primary">Gerar Tabela de Transições</button>
+        </section>
+
+        <!-- Seção 2: Gerenciamento de Estados -->
+        <section class="card" id="states-section" style="display: none;">
+            <h2>🔄 Estados da Máquina</h2>
+
+            <div id="states-container" class="states-grid">
+                <!-- Estado inicial q0 (sempre presente) -->
+                <div class="state-item state-initial" data-state="q0">
+                    <span class="state-name">→ q0</span>
+                    <span class="state-label">(inicial)</span>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="add-state-btn" class="btn btn-secondary">+ Estado Normal</button>
+                <button id="add-final-state-btn" class="btn btn-success">+ Estado Final</button>
+                <button id="delete-last-state-btn" class="btn btn-danger">Deletar Último</button>
+            </div>
+
+            <div class="info-box">
+                <div class="info-item">
+                    <strong>Estado Inicial:</strong>
+                    <span id="initial-state-display">q0</span>
+                </div>
+                <div class="info-item">
+                    <strong>Estados Finais:</strong>
+                    <span id="final-states-display">Nenhum</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção 3: Tabela de Transições -->
+        <section class="card" id="transitions-section" style="display: none;">
+            <h2>📊 Tabela de Transições</h2>
+
+            <div class="table-wrapper">
+                <table id="transition-table">
+                    <thead>
+                        <tr>
+                            <th>Estado Atual</th>
+                            <th>Símbolo Lido</th>
+                            <th>Novo Estado</th>
+                            <th>Novo Símbolo</th>
+                            <th>Direção</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transition-body">
+                        <!-- Preenchido dinamicamente pelo JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Seção 4: Visualização da Máquina -->
+        <section class="card" id="visualization-section" style="display: none;">
+            <h2>👁️ Visualização da Tabela</h2>
+
+            <div class="table-wrapper">
+                <table id="visualization-table">
+                    <thead id="visualization-head">
+                        <!-- Preenchido dinamicamente -->
+                    </thead>
+                    <tbody id="visualization-body">
+                        <!-- Preenchido dinamicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Seção 5: Execução -->
+        <section class="card" id="execution-section" style="display: none;">
+            <h2>▶️ Executar Máquina de Turing</h2>
+
+            <div class="input-group">
+                <label for="input-tape">Entrada (fita inicial):</label>
+                <input type="text" id="input-tape" placeholder="Ex: 101">
+                <small>Digite a string de entrada para processar</small>
+            </div>
+
+            <div class="button-group">
+                <button id="run-machine-btn" class="btn btn-primary">▶️ Executar no Servidor</button>
+                <button id="run-display-btn" class="btn btn-accent">📺 Executar no Display OLED</button>
+                <button onclick="startStepMode()" class="btn btn-secondary">🔄 Iniciar Modo Passo a Passo</button>
+            </div>
+
+            <div id="result-box" class="result-box" style="display: none;">
+                <h3>Resultado:</h3>
+                <pre id="result-content"></pre>
+            </div>
+        </section>
+
+        <!-- Seção 6: Salvar/Carregar -->
+        <section class="card">
+            <h2>💾 Gerenciar Configurações</h2>
+
+            <div class="input-group">
+                <label for="file-name">Nome do arquivo:</label>
+                <input type="text" id="file-name" placeholder="minha_maquina" value="machine">
+                <small>.json será adicionado automaticamente</small>
+            </div>
+
+            <div class="button-group">
+                <button id="save-machine-btn" class="btn btn-success">💾 Salvar no ESP32</button>
+                <button id="load-machine-btn" class="btn btn-secondary">📂 Carregar do ESP32</button>
+                <button id="copy-json-btn" class="btn btn-secondary">📋 Copiar JSON</button>
+            </div>
+
+            <div id="saved-files-section" style="margin-top: 20px; display: none;">
+                <h3>Arquivos Salvos:</h3>
+                <ul id="saved-files-list"></ul>
+            </div>
+        </section>
+
+        <!-- Rodapé -->
+        <footer>
+            <p>ESP32 Turing Machine v2.0 | TCC - Ciência da Computação</p>
+            <p id="connection-status" class="status-indicator">⚪ Desconectado</p>
+        </footer>
+    </div>
+
+    <!-- Notificações Toast -->
+    <div id="toast-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>

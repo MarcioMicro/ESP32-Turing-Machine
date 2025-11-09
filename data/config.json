@@ -1,0 +1,11 @@
+{
+  "wifi": {
+    "ssid": "SUA_REDE_WIFI",
+    "password": "SUA_SENHA_WIFI"
+  },
+  "ap": {
+    "ssid": "ESP32_TuringMachine",
+    "password": "turingmachine"
+  },
+  "hostname": "turingmachine"
+}

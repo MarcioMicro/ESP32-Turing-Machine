@@ -1,0 +1,176 @@
+{
+  "nome": "Verificador de Palíndromo Binário",
+  "descricao": "Verifica se uma string binária é um palíndromo",
+  "alphabet": [
+    "0",
+    "1"
+  ],
+  "tapeAlphabet": [
+    "0",
+    "1",
+    "x",
+    "^",
+    "_"
+  ],
+  "states": [
+    "q0",
+    "q1",
+    "q2",
+    "q3",
+    "q4",
+    "q5",
+    "q_accept"
+  ],
+  "initialState": "q0",
+  "finalStates": [
+    "q_accept"
+  ],
+  "transitions": {
+    "q0": {
+      "0": {
+        "nextState": "q0",
+        "newSymbol": "0",
+        "direction": "L"
+      },
+      "1": {
+        "nextState": "q0",
+        "newSymbol": "1",
+        "direction": "L"
+      },
+      "^": {
+        "nextState": "q1",
+        "newSymbol": "^",
+        "direction": "R"
+      },
+      "x": {
+        "nextState": "q0",
+        "newSymbol": "x",
+        "direction": "L"
+      }
+    },
+    "q1": {
+      "0": {
+        "nextState": "q2",
+        "newSymbol": "x",
+        "direction": "R"
+      },
+      "1": {
+        "nextState": "q3",
+        "newSymbol": "x",
+        "direction": "R"
+      },
+      "x": {
+        "nextState": "q1",
+        "newSymbol": "x",
+        "direction": "R"
+      },
+      "_": {
+        "nextState": "q_accept",
+        "newSymbol": "_",
+        "direction": "R"
+      }
+    },
+    "q2": {
+      "0": {
+        "nextState": "q2",
+        "newSymbol": "0",
+        "direction": "R"
+      },
+      "1": {
+        "nextState": "q2",
+        "newSymbol": "1",
+        "direction": "R"
+      },
+      "x": {
+        "nextState": "q2",
+        "newSymbol": "x",
+        "direction": "R"
+      },
+      "_": {
+        "nextState": "q4",
+        "newSymbol": "_",
+        "direction": "L"
+      }
+    },
+    "q3": {
+      "0": {
+        "nextState": "q3",
+        "newSymbol": "0",
+        "direction": "R"
+      },
+      "1": {
+        "nextState": "q3",
+        "newSymbol": "1",
+        "direction": "R"
+      },
+      "x": {
+        "nextState": "q3",
+        "newSymbol": "x",
+        "direction": "R"
+      },
+      "_": {
+        "nextState": "q5",
+        "newSymbol": "_",
+        "direction": "L"
+      }
+    },
+    "q4": {
+      "0": {
+        "nextState": "q0",
+        "newSymbol": "x",
+        "direction": "L"
+      },
+      "x": {
+        "nextState": "q4",
+        "newSymbol": "x",
+        "direction": "L"
+      },
+      "^": {
+        "nextState": "q0",
+        "newSymbol": "^",
+        "direction": "R"
+      }
+    },
+    "q5": {
+      "1": {
+        "nextState": "q0",
+        "newSymbol": "x",
+        "direction": "L"
+      },
+      "x": {
+        "nextState": "q5",
+        "newSymbol": "x",
+        "direction": "L"
+      },
+      "^": {
+        "nextState": "q0",
+        "newSymbol": "^",
+        "direction": "R"
+      }
+    }
+  },
+  "exemplos": {
+    "aceitos": [
+      "101",
+      "0110",
+      "1111",
+      "0000",
+      "1"
+    ],
+    "rejeitados": [
+      "100",
+      "011",
+      "1010",
+      "001"
+    ]
+  },
+  "notas": [
+    "Este é um exemplo de máquina de Turing para verificação de palíndromos",
+    "A máquina marca símbolos nas extremidades e compara",
+    "q1: Le primeiro símbolo não-marcado (0 ou 1) e marca com x",
+    "q2/q3: Vai até o final da fita",
+    "q4/q5: Verifica se último símbolo corresponde ao primeiro e marca com x",
+    "Retorna ao início (^) e repete até todos símbolos serem marcados",
+    "Se encontrar _ (fita vazia ou todos marcados), aceita"
+  ]
+}
