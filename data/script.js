@@ -662,14 +662,11 @@ async function loadFilesList() {
             const section = document.getElementById('saved-files-section');
             const list = document.getElementById('saved-files-list');
 
-            // Filtrar arquivos do sistema (config.json)
-            const userFiles = data.files.filter(file => file.name !== 'config.json');
-
-            if (userFiles.length > 0) {
+            if (data.files.length > 0) {
                 section.style.display = 'block';
                 list.innerHTML = '';
 
-                userFiles.forEach(file => {
+                data.files.forEach(file => {
                     const li = document.createElement('li');
                     li.innerHTML = `
                         <span>${file.name} (${file.size} bytes)</span>

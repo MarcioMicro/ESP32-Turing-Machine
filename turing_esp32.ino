@@ -873,9 +873,7 @@ void carregarListaArquivos() {
       fileName = "/" + fileName;
     }
 
-    if (fileName.endsWith(".json") &&
-        fileName != "/config.json" &&
-        !fileName.endsWith("config.json")) {
+    if (fileName.endsWith(".json")) {
 
       arquivosDisponiveis[numArquivos] = fileName;
       Serial.printf("  [%d] %s\n", numArquivos, fileName.c_str());

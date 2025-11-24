@@ -1,37 +1,33 @@
-# 🤖 ESP32 Turing Machine
+# ESP32 Turing Machine
 
 ## Visão Geral
 
-Implementação completa de uma **Máquina de Turing Universal** em ESP32, com interface web moderna e controle físico via display OLED e botões. Desenvolvido como Trabalho de Conclusão de Curso (TCC) com foco em código didático e arquitetura limpa.
+Implementação de uma **Máquina de Turing** em ESP32, com interface web e controle físico via display OLED e botões. Desenvolvido como Trabalho de Conclusão de Curso (TCC) em Ciência da Computação.
 
-### Características Principais
+### Características
 
-- ✅ **Interface Web Completa** - Configure e execute MTs graficamente
-- ✅ **Display OLED** - Visualização física da execução passo a passo
-- ✅ **3 Modos de Execução**:
-  - Automático (via menu físico ou API)
-  - Passo a passo (controle total via botões)
+- **Interface Web** - Configure e execute MTs pelo navegador
+- **Display OLED** - Visualização da execução com animações
+- **3 Modos de Execução**:
+  - Automático (com delay entre passos)
+  - Passo a passo (controle via botões)
   - Híbrido (configura na web, executa fisicamente)
-- ✅ **Arquitetura Unificada** - Funções centralizadas garantem consistência
-- ✅ **Persistência** - Salve e carregue MTs no sistema de arquivos LittleFS
-- ✅ **API REST** - Controle total via HTTP
+- **Persistência** - Salve e carregue MTs no sistema de arquivos LittleFS
+- **API REST** - Controle via requisições HTTP
 
 ---
 
 ## Estrutura do Projeto
 
 ```
-novo_projeto/
-├── novo_projeto.ino             # Código principal ESP32 (~2500 linhas)
-├── data/                        # Arquivos para LittleFS (upload separado)
-│   ├── index.html               # Interface web responsiva
-│   ├── styles.css               # Estilos CSS modernos
-│   ├── script.js                # Lógica JavaScript (~1000 linhas)
-│   ├── config.json              # Configurações do sistema
-│   └── exemplo_palindromo.json  # MT de exemplo (palíndromo binário)
-├── README.md                    # Este arquivo
-├── MAPA_FUNCOES.md             # Documentação detalhada de funções
-└── CLAUDE.md                    # Informações para assistente IA
+turing_esp32/
+├── turing_esp32.ino             # Código principal ESP32
+├── data/                        # Arquivos para upload no LittleFS
+│   ├── index.html               # Interface web
+│   ├── styles.css               # Estilos CSS
+│   ├── script.js                # Lógica JavaScript
+│   └── exemplo_palindromo.json  # MT de exemplo
+└── README.md                    # Este arquivo
 ```
 
 ---
@@ -42,58 +38,49 @@ novo_projeto/
 
 | Componente | Quantidade | Especificação |
 |------------|------------|---------------|
-| ESP32 DevKit | 1x | Qualquer modelo com WiFi |
-| Display OLED | 1x | SSD1306 128x64 I2C (0x3C) |
-| Push Buttons | 3x | Momentary switch |
-| Resistores | 3x | 10kΩ (opcional, se usar pull-up interno) |
-| Breadboard | 1x | 830 pontos |
+| ESP32 DevKit | 1x | WEMOS LOLIN32 (30 pinos) |
+| Display OLED | 1x | SSD1306 128x64 I2C (Integrado ao ESP32) |
+| Push Buttons | 3x | Botão momentâneo |
+| Protoboard | 1x | 830 pontos |
 | Jumpers | ~15 | Macho-macho |
-| Cabo USB | 1x | Micro-USB para programação |
+| Cabo USB | 1x | Para programação |
 
 ### Conexões
 
 ```
 ESP32          OLED SSD1306
-GPIO 5   <-->  SDA
-GPIO 4   <-->  SCL
-3.3V     <-->  VCC
-GND      <-->  GND
+GPIO 5   -->   SDA
+GPIO 4   -->   SCL
+3.3V     -->   VCC
+GND      -->   GND
 
-ESP32          Botões (pull-up interno habilitado)
-GPIO 12  <-->  [BACK] --> GND
-GPIO 14  <-->  [SELECT] --> GND
-GPIO 2   <-->  [NEXT] --> GND
+ESP32          Botões
+GPIO 12  -->   [BACK] --> GND
+GPIO 14  -->   [SELECT] --> GND
+GPIO 2   -->   [NEXT] --> GND
 ```
 
 ### Software
 
-#### Arduino IDE 2.x
+**Arduino IDE 2.3.6**
 
-1. **Instalar ESP32 Core**:
-   - File → Preferences → Additional Board Manager URLs:
-     ```
-     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
-     ```
-   - Tools → Board → Boards Manager → Buscar "ESP32" → Instalar
+1. **ESP32 Core**: File → Preferences → Additional Board Manager URLs:
+   ```
+   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+   ```
 
-2. **Bibliotecas Necessárias** (via Library Manager):
-   - `ArduinoJson` (by Benoit Blanchon) v6.x
-   - `Adafruit GFX Library`
-   - `Adafruit SSD1306`
-   - **IMPORTANTE**: Usar `WebServer.h` (nativo do ESP32 - não instalar)
+2. **Bibliotecas** (via Library Manager):
+   - `ArduinoJson` v7.4.2
+   - `Adafruit GFX` 1.12.4
+   - `Adafruit SSD1306` 2.5.15
 
-3. **Plugin LittleFS**:
-   - Download: [ESP32 LittleFS Plugin](https://github.com/lorol/arduino-esp32littlefs-plugin/releases)
-   - Extrair em: `<ArduinoDir>/tools/`
-   - Reiniciar IDE
+3. **Plugin LittleFS**: [ESP32 LittleFS Plugin](https://github.com/lorol/arduino-esp32littlefs-plugin/releases)
 
-#### Configurações da Placa
-
+**Configurações da Placa**:
 ```
-Tools → Board: "ESP32 Dev Module"
-Tools → Partition Scheme: "Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)"
-Tools → Upload Speed: "115200"
-Tools → Port: [Selecionar porta COM do ESP32]
+Board: ESP32 WEMOS LOLIN32
+Partition Scheme: Default 4MB with spiffs
+Upload Speed: 115200
 ```
 
 ---
@@ -102,35 +89,34 @@ Tools → Port: [Selecionar porta COM do ESP32]
 
 ### 1. Upload do Firmware
 
-1. Abra `novo_projeto.ino` no Arduino IDE
-2. Configure WiFi (opcional):
+1. Abra `turing_esp32.ino` no Arduino IDE
+2. Configure WiFi (linhas 46-47):
    ```cpp
-   // Linha ~40 do código
-   #define WIFI_SSID "SEU_SSID"
-   #define WIFI_PASSWORD "SUA_SENHA"
+   const char* WIFI_SSID = "SEU_SSID";
+   const char* WIFI_PASSWORD = "SUA_SENHA";
    ```
-3. Compile e faça upload: **Upload** (→)
+3. Faça upload
 
 ### 2. Upload dos Arquivos Web
 
-1. Certifique-se que a pasta `data/` está no mesmo diretório do `.ino`
-2. No Arduino IDE: **Tools → ESP32 Sketch Data Upload**
-3. Aguarde conclusão (~30 segundos)
+1. Tools → ESP32 Sketch Data Upload
+2. Aguarde conclusão
 
 ### 3. Primeiro Acesso
 
-Após upload completo, o ESP32 irá:
+O ESP32 tentará conectar ao WiFi configurado:
+- **Sucesso**: IP exibido no display e Serial Monitor
+- **Falha**: Ativa modo AP (SSID: `ESP32_TuringMachine`, Senha: `123`, IP: `192.168.4.1`)
 
-1. **Tentar conectar ao WiFi** configurado
-   - Se conectar: Exibe IP no Serial Monitor
-   - Acesse: `http://[IP_DO_ESP32]`
+O display mostra:
+```
+Pronto!
+Acesse pelo ip:
+192.168.0.XXX
+Pressione botao...
+```
 
-2. **Se falhar, inicia modo AP** (Access Point):
-   - SSID: `ESP32_TuringMachine`
-   - Senha: `123`
-   - IP fixo: `http://192.168.4.1`
-
-3. **Display OLED** mostra menu principal
+Pressione qualquer botão para ir ao menu principal.
 
 ---
 
@@ -138,42 +124,34 @@ Após upload completo, o ESP32 irá:
 
 ### Interface Web
 
-Acesse via navegador: `http://[IP_DO_ESP32]`
+Acesse `http://[IP_DO_ESP32]` no navegador.
 
-#### Fluxo Típico
+**Fluxo**:
 
 1. **Configurar Alfabetos**:
-   - Nome da máquina (opcional)
-   - Descrição (opcional, colapsável)
-   - Alfabeto de entrada: ex `01`
-   - Alfabeto auxiliar: ex `xy`
+   - Alfabeto de entrada (ex: `01`)
+   - Alfabeto auxiliar (ex: `xy`)
    - Clique **Gerar Tabela de Transições**
 
 2. **Adicionar Estados**:
-   - Clique **+ Estado Normal** ou **+ Estado Final**
-   - Estados aparecem em cards coloridos
+   - **+ Estado Normal** ou **+ Estado Final**
 
 3. **Preencher Transições**:
-   - Tabela gerada automaticamente
-   - Selects para: Próximo Estado | Novo Símbolo | Direção
-   - Estados finais **não aparecem** na tabela (por design)
+   - Tabela com: Próximo Estado | Novo Símbolo | Direção (E/D)
+   - Estados finais não aparecem na tabela
 
 4. **Executar**:
-   - Digite entrada na fita: ex `101`
-   - **▶️ Executar no Servidor**: Executa e mostra resultado JSON
-   - **📺 Executar no Display OLED**: Executa com animação no display físico
-   - **🔄 Iniciar Modo Passo a Passo**: Inicia no ESP32, controle pelos botões
+   - Digite entrada (ex: `101`)
+   - **Executar no Servidor**: Resultado JSON
+   - **Executar no Display OLED**: Animação no display físico
+   - **Iniciar Modo Passo a Passo**: Controle pelos botões
 
 5. **Salvar/Carregar**:
-   - Nome do arquivo: ex `minha_mt`
-   - **💾 Salvar no ESP32**: Grava no LittleFS
-   - **Arquivos Salvos**: Lista com botões Carregar/Deletar
-   - **📥 Download JSON**: Baixa para seu computador
-   - **📋 Copiar JSON**: Copia para clipboard
+   - Salvar no ESP32 (LittleFS)
+   - Download/Upload JSON
+   - Copiar para clipboard
 
 ### Menu Físico (Display OLED)
-
-Navegação pelos botões:
 
 ```
 [BACK]    [SELECT]    [NEXT]
@@ -181,37 +159,42 @@ Navegação pelos botões:
 ```
 
 **Menu Principal**:
-1. **Executar (AUTO)** → Execução automática com delay 500ms
-2. **Executar (PASSO)** → Controle passo a passo
-3. **Editar Entrada** → Modifica string de entrada
-4. **Sair** → Desliga display (economiza energia)
+1. Modo Automático - Execução com delay 500ms
+2. Modo Passo-a-Passo - Um passo por botão
+3. Selecionar MT - Escolher arquivo salvo
+
+**Editor de Fita**:
+```
+[<<] [X] [>] [1] [0] [1] [+]
+```
+- `<<`: Voltar
+- `X`: Limpar fita
+- `>`: Iniciar execução
+- Símbolos: Editar (SELECT alterna)
+- `+`: Adicionar símbolo
 
 **Durante Execução**:
-- Display mostra: Estado atual, Fita, Transição
-- Formato: `trans: q1 | 0 | D` (estado | símbolo | direção)
-- Tela final: ACEITO/REJEITADO com motivo e passos
+- Exibe: estado atual, fita, próxima transição
+- Formato: `trans: q1 | 0 | D`
+- Resultado: ACEITO/REJEITADO com passos
 
 ---
 
 ## API REST
 
-### Endpoints Disponíveis
-
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
-| GET | `/` | Interface web principal |
-| GET | `/status` | Status do ESP32 (JSON) |
-| POST | `/api/save` | Salvar MT no LittleFS |
+| GET | `/` | Interface web |
+| GET | `/status` | Status do ESP32 |
+| POST | `/api/save` | Salvar MT |
 | GET | `/api/load?filename=X` | Carregar MT |
-| GET | `/api/files` | Listar arquivos salvos |
+| GET | `/api/files` | Listar arquivos |
 | DELETE | `/api/delete?filename=X` | Deletar arquivo |
-| POST | `/api/execute` | Executar MT (retorna resultado) |
-| POST | `/api/execute-display` | Executar com visualização OLED |
-| POST | `/api/start-step-mode` | Iniciar modo passo a passo |
+| POST | `/api/execute` | Executar MT |
+| POST | `/api/execute-display` | Executar com display |
+| POST | `/api/start-step-mode` | Modo passo a passo |
 
-### Exemplos de Uso
-
-#### Executar MT
+### Exemplo
 
 ```bash
 curl -X POST http://192.168.0.111/api/execute \
@@ -219,7 +202,6 @@ curl -X POST http://192.168.0.111/api/execute \
   -d '{
     "input": "101",
     "config": {
-      "nome": "Teste",
       "alphabet": ["0","1"],
       "tapeAlphabet": ["0","1","^","_"],
       "states": ["q0","q_accept"],
@@ -235,8 +217,7 @@ curl -X POST http://192.168.0.111/api/execute \
   }'
 ```
 
-#### Resposta
-
+**Resposta**:
 ```json
 {
   "accepted": true,
@@ -253,10 +234,9 @@ curl -X POST http://192.168.0.111/api/execute \
 
 ### Funções Centralizadas
 
-Todo o código compartilha **funções helper** centralizadas:
+O código usa funções helper compartilhadas por todos os modos:
 
 ```cpp
-// Núcleo da lógica da MT
 TransitionInfo buscarTransicao(String state, char symbol, JsonObject config);
 int aplicarTransicao(TransitionInfo trans, String &tape, int &pos, String &state);
 bool isEstadoFinal(String state, JsonObject config);
@@ -264,146 +244,82 @@ bool isEstadoFinal(String state, JsonObject config);
 
 ### Fluxos de Execução
 
-Todos os 3 modos usam as mesmas funções:
+1. **Menu Automático**: `iniciarExecucaoAutomatica()` → `executarPassoAutomatico()`
+2. **Menu Passo a Passo**: `iniciarExecucaoPasso()` → `executarProximoPasso()`
+3. **API Web**: `TuringMachine::execute()`
 
-1. **Menu Físico Automático**: `iniciarExecucaoAutomatica()` → `executarPassoAutomatico()`
-2. **Menu Físico Passo a Passo**: `iniciarExecucaoPasso()` → `executarProximoPasso()`
-3. **API Web**: `TuringMachine::execute()` (classe)
-
-**Resultado**: Comportamento **idêntico** e **previsível** em todos os modos.
-
-Consulte [MAPA_FUNCOES.md](MAPA_FUNCOES.md) para documentação detalhada.
+Todos usam as mesmas funções, garantindo comportamento consistente.
 
 ---
 
-## Exemplos de MTs
-
-### Palíndromo Binário (incluído)
-
-Arquivo: `data/exemplo_palindromo.json`
-
-- **Aceita**: `101`, `0110`, `1111`, `0000`, `1`
-- **Rejeita**: `100`, `011`, `1010`, `001`
-
-### Como Criar Novas MTs
-
-1. Use a interface web (mais fácil)
-2. Ou edite JSON manualmente:
+## Formato JSON da MT
 
 ```json
 {
-  "nome": "Minha MT",
-  "descricao": "O que ela faz",
-  "alphabet": ["a","b"],
-  "tapeAlphabet": ["a","b","x","^","_"],
-  "states": ["q0","q1","q_accept"],
+  "nome": "Nome da MT",
+  "descricao": "Descrição opcional",
+  "alphabet": ["0", "1"],
+  "tapeAlphabet": ["0", "1", "x", "^", "_"],
+  "states": ["q0", "q1", "q_accept"],
   "initialState": "q0",
   "finalStates": ["q_accept"],
   "transitions": {
     "q0": {
-      "a": {
-        "nextState": "q1",
-        "newSymbol": "x",
-        "direction": "R"
-      }
+      "^": {"nextState": "q0", "newSymbol": "^", "direction": "R"},
+      "0": {"nextState": "q1", "newSymbol": "x", "direction": "R"}
+    },
+    "q1": {
+      "1": {"nextState": "q_accept", "newSymbol": "1", "direction": "R"}
     }
   }
 }
 ```
 
-3. Faça upload via web ou copie para `data/` e refaça upload LittleFS
+### Campos
+
+- `alphabet`: Símbolos de entrada (usuário pode digitar)
+- `tapeAlphabet`: Todos os símbolos (inclui `^` início e `_` vazio)
+- `states`: Lista de todos os estados
+- `initialState`: Estado inicial
+- `finalStates`: Estados de aceitação
+- `transitions`: Tabela de transições por estado e símbolo
+- `direction`: `"L"` (esquerda) ou `"R"` (direita)
 
 ---
 
 ## Troubleshooting
 
-### Display OLED não liga
-
-1. Verifique conexões (SDA/SCL)
-2. Teste endereço I2C (geralmente `0x3C`):
-   ```cpp
-   // Use I2C Scanner sketch
-   ```
-3. Confirme biblioteca Adafruit SSD1306 instalada
+### Display não liga
+- Verifique conexões SDA/SCL
+- Confirme endereço I2C (0x3C)
 
 ### WiFi não conecta
+- Verifique SSID/senha no código
+- Modo AP ativa automaticamente como fallback
 
-1. Verifique SSID/senha no código
-2. Serial Monitor mostra tentativas
-3. Se falhar, ativa modo AP automaticamente
+### Página não carrega
+- Refaça upload LittleFS
+- Use `http://` (não `https://`)
 
-### Página web não carrega
-
-1. Ping no IP: `ping 192.168.0.111`
-2. Verifique firewall
-3. Certifique-se de usar `http://` (não `https://`)
-4. Refaça upload LittleFS se necessário
-
-### Erro 404 em endpoints da API
-
-1. Código foi atualizado? Refaça upload do firmware
-2. Verifique Serial Monitor durante boot
-3. Rotas são case-sensitive
-
-### MT rejeita quando deveria aceitar
-
-1. Verifique se transições estão completas (sem campos vazios)
-2. Estados finais devem estar marcados
-3. Teste via API para ver histórico de passos
-4. Consulte [MAPA_FUNCOES.md](MAPA_FUNCOES.md) para lógica de aceitação
+### MT rejeita incorretamente
+- Verifique se todas as transições estão preenchidas
+- Estados finais devem estar marcados
+- Use API `/api/execute` para ver histórico de passos
 
 ---
 
-## Documentação Adicional
-
-- **[MAPA_FUNCOES.md](MAPA_FUNCOES.md)**: Explicação didática de cada função e fluxos
-- **[CLAUDE.md](CLAUDE.md)**: Informações do projeto para assistente IA
-- **[PLANO_IMPLEMENTACAO.md](../PLANO_IMPLEMENTACAO.md)**: Guia de desenvolvimento incremental (raiz do projeto)
-
----
-
-## Recursos de Aprendizado
-
-### Teoria de Computação
+## Recursos
 
 - [Turing Machine - Wikipedia](https://en.wikipedia.org/wiki/Turing_machine)
-- [Introduction to Automata Theory (Hopcroft)](https://www.amazon.com/Introduction-Automata-Theory-Languages-Computation/dp/0321455363)
-
-### ESP32
-
-- [ESP32 Official Docs](https://docs.espressif.com/projects/arduino-esp32/)
-- [Random Nerd Tutorials - ESP32](https://randomnerdtutorials.com/projects-esp32/)
-
-### Bibliotecas
-
-- [ArduinoJson Documentation](https://arduinojson.org/v6/doc/)
-- [Adafruit SSD1306 Guide](https://learn.adafruit.com/monochrome-oled-breakouts/arduino-library-and-examples)
+- [ESP32 Docs](https://docs.espressif.com/projects/arduino-esp32/)
+- [ArduinoJson](https://arduinojson.org/)
+- [Adafruit SSD1306](https://learn.adafruit.com/monochrome-oled-breakouts/)
 
 ---
 
 ## Licença
 
-Projeto desenvolvido para fins educacionais como parte do Trabalho de Conclusão de Curso (TCC) em Ciência da Computação.
+Projeto educacional - TCC em Ciência da Computação.
 
-**Autor**: Márcio
-**Instituição**: [Sua Universidade]
-**Ano**: 2024/2025
-
----
-
-## Agradecimentos
-
-- Professores orientadores
-- Comunidade ESP32
-- Adafruit por bibliotecas de qualidade
-- Claude Code por assistência no desenvolvimento
-
----
-
-**🎓 Objetivo**: Demonstrar implementação prática de conceitos teóricos de Ciência da Computação em hardware embarcado, com código limpo, didático e bem documentado.
-
-**📚 Para estudantes**: Este projeto serve como referência de boas práticas em:
-- Arquitetura de firmware embarcado
-- Design de APIs REST
-- Interfaces web responsivas
-- Documentação técnica completa
+**Autor**: Marcio Lima
+**Ano**: 2025
