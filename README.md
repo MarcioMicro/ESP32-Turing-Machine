@@ -237,9 +237,9 @@ curl -X POST http://192.168.0.111/api/execute \
 O código usa funções helper compartilhadas por todos os modos:
 
 ```cpp
-TransitionInfo buscarTransicao(String state, char symbol, JsonObject config);
+TransitionInfo buscarTransicao(String state, char symbol);
 int aplicarTransicao(TransitionInfo trans, String &tape, int &pos, String &state);
-bool isEstadoFinal(String state, JsonObject config);
+bool isEstadoFinal(String state);
 ```
 
 ### Fluxos de Execução

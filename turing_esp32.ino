@@ -100,10 +100,8 @@ struct ExecutionResult {
 // PROTÓTIPOS DE FUNÇÕES
 // ============================================================================
 
-TransitionInfo buscarTransicao(String currentState, char currentSymbol, JsonObject config);
 TransitionInfo buscarTransicao(String currentState, char currentSymbol);
 bool isEstadoFinal(String state);
-bool isEstadoFinal(String state, JsonObject config);
 int aplicarTransicao(TransitionInfo transition, String &tape, int headPosition, String &currentState);
 int aplicarTransicao(TransitionInfo transition);
 void mostrarResultadoFinal(String titulo, String motivo, int passos, bool waitForButton = true);
@@ -122,25 +120,14 @@ public:
   static const int MAX_STEPS = 1000;
   static const int MAX_TAPE_SIZE = 500;
 
-  ExecutionResult execute(String input, String configJSON, bool useDisplay = false, int stepDelay = 500) {
+  ExecutionResult execute(String input, bool useDisplay = false, int stepDelay = 500) {
     ExecutionResult result;
     result.accepted = false;
     result.steps = 0;
     result.message = "";
     result.history = "[";
 
-    StaticJsonDocument<8192> doc;
-    DeserializationError error = deserializeJson(doc, configJSON);
-
-    if (error) {
-      result.message = "Erro ao parsear JSON: " + String(error.c_str());
-      result.finalTape = "";
-      result.history = "]";
-      Serial.println("✗ " + result.message);
-      return result;
-    }
-
-    String initialState = doc["initialState"] | "q0";
+    String initialState = docGlobal["initialState"] | "q0";
 
     tape = "^" + input;
     for (int i = 0; i < 20; i++) tape += "_";
@@ -185,7 +172,7 @@ public:
       result.history += "\"tape\":\"" + tape + "\"";
       result.history += "}";
 
-      TransitionInfo transition = buscarTransicao(currentState, currentSymbol, doc.as<JsonObject>());
+      TransitionInfo transition = buscarTransicao(currentState, currentSymbol);
 
       if (!transition.found) {
         Serial.printf("✗ Sem transição para estado '%s' e símbolo '%s'\n",
@@ -220,7 +207,7 @@ public:
         return result;
       }
 
-      if (isEstadoFinal(currentState, doc.as<JsonObject>())) {
+      if (isEstadoFinal(currentState)) {
         result.history += "]";
         result.finalTape = tape;
         result.steps = stepCount;
@@ -303,7 +290,7 @@ StaticJsonDocument<8192> docGlobal;
 // FUNÇÕES DE TRANSIÇÃO
 // ============================================================================
 
-TransitionInfo buscarTransicao(String currentState, char currentSymbol, JsonObject config) {
+TransitionInfo buscarTransicao(String currentState, char currentSymbol) {
   TransitionInfo result;
   result.found = false;
   result.nextState = "?";
@@ -311,7 +298,7 @@ TransitionInfo buscarTransicao(String currentState, char currentSymbol, JsonObje
   result.direction = "?";
 
   String symbolStr = String(currentSymbol);
-  JsonObject transitions = config["transitions"];
+  JsonObject transitions = docGlobal["transitions"];
 
   if (!transitions.containsKey(currentState)) {
     return result;
@@ -343,22 +330,8 @@ TransitionInfo buscarTransicao(String currentState, char currentSymbol, JsonObje
   return result;
 }
 
-TransitionInfo buscarTransicao(String currentState, char currentSymbol) {
-  return buscarTransicao(currentState, currentSymbol, docGlobal.as<JsonObject>());
-}
-
 bool isEstadoFinal(String state) {
   JsonArray finalStates = docGlobal["finalStates"];
-  for (JsonVariant finalState : finalStates) {
-    if (finalState.as<String>() == state) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool isEstadoFinal(String state, JsonObject config) {
-  JsonArray finalStates = config["finalStates"];
   for (JsonVariant finalState : finalStates) {
     if (finalState.as<String>() == state) {
       return true;
@@ -611,10 +584,6 @@ void drawTape(String tape, int headPos, String currentState, int stepCount, Stri
 
 void animateTransition(String oldTape, String newTape, int oldPos, int newPos,
                        String oldState, String newState, int stepCount) {
-
-  docGlobal.clear();
-  deserializeJson(docGlobal, configAtual);
-
   char symbolAtOldPos = newTape[oldPos];
   TransitionInfo trans = buscarTransicao(oldState, oldTape[oldPos]);
 
@@ -622,8 +591,7 @@ void animateTransition(String oldTape, String newTape, int oldPos, int newPos,
   if (trans.found) {
     transInfo += trans.nextState + " | " + trans.newSymbol + " | ";
     if (trans.direction == "L") transInfo += "E";
-    else if (trans.direction == "R") transInfo += "D";
-    else transInfo += "S";
+    else transInfo += "D";
   } else {
     transInfo += "-";
   }
@@ -734,8 +702,7 @@ void animateTransition(String oldTape, String newTape, int oldPos, int newPos,
   } else if (nextTrans.found) {
     nextTransInfo += nextTrans.nextState + " | " + nextTrans.newSymbol + " | ";
     if (nextTrans.direction == "L") nextTransInfo += "E";
-    else if (nextTrans.direction == "R") nextTransInfo += "D";
-    else nextTransInfo += "S";
+    else nextTransInfo += "D";
   } else {
     nextTransInfo += "-";
   }
@@ -1121,8 +1088,6 @@ void alternarSimboloEditor() {
     return;
   }
 
-  docGlobal.clear();
-  deserializeJson(docGlobal, configAtual);
   String simbolosValidos = obterSimbolosValidosString();
 
   int indiceString = posicaoEditor - 1;
@@ -1347,8 +1312,10 @@ void handleExecute() {
 
   String configJSON;
   serializeJson(config, configJSON);
+  docGlobal.clear();
+  deserializeJson(docGlobal, configJSON);
 
-  ExecutionResult result = tm.execute(input, configJSON);
+  ExecutionResult result = tm.execute(input);
 
   String response = "{";
   response += "\"accepted\":" + String(result.accepted ? "true" : "false") + ",";
@@ -1404,10 +1371,13 @@ void handleExecuteDisplay() {
 
   String configJSON;
   serializeJson(config, configJSON);
+  docGlobal.clear();
+  deserializeJson(docGlobal, configJSON);
+  configAtual = configJSON;
 
   server.send(202, "application/json", "{\"status\":\"executing\",\"message\":\"Executando no display\"}");
 
-  ExecutionResult result = tm.execute(input, configJSON, true, stepDelay);
+  ExecutionResult result = tm.execute(input, true, stepDelay);
 
   Serial.printf("Execução no display finalizada: %s\n", result.message.c_str());
 }
@@ -1454,9 +1424,7 @@ void handleStartStepMode() {
 
   entradaUsuario = input;
 
-  configAtual = "";
   serializeJson(config, configAtual);
-
   docGlobal.clear();
   deserializeJson(docGlobal, configAtual);
 
@@ -1620,8 +1588,6 @@ void processarMenuSelecaoMT(int botao) {
 
 void inicializarEditor() {
   if (entradaUsuario.length() == 0) {
-    docGlobal.clear();
-    deserializeJson(docGlobal, configAtual);
     entradaUsuario = String(obterPrimeiroSimboloValido());
   }
 
@@ -1637,8 +1603,6 @@ void resetarFita() {
 }
 
 void adicionarSimboloEditor() {
-  docGlobal.clear();
-  deserializeJson(docGlobal, configAtual);
   char novoSimbolo = obterPrimeiroSimboloValido();
   entradaUsuario += novoSimbolo;
   Serial.printf("Símbolo adicionado: %c (nova entrada: %s)\n", novoSimbolo, entradaUsuario.c_str());
@@ -1709,9 +1673,6 @@ void iniciarExecucaoAutomatica() {
 
   tm.headPosition = 0;
   tm.stepCount = 0;
-
-  docGlobal.clear();
-  deserializeJson(docGlobal, configAtual);
   tm.currentState = docGlobal["initialState"] | "q0";
 
   Serial.printf("Estado inicial: %s\n", tm.currentState.c_str());
@@ -1730,8 +1691,7 @@ void iniciarExecucaoAutomatica() {
   } else if (firstTrans.found) {
     firstTransInfo += firstTrans.nextState + " | " + firstTrans.newSymbol + " | ";
     if (firstTrans.direction == "L") firstTransInfo += "E";
-    else if (firstTrans.direction == "R") firstTransInfo += "D";
-    else firstTransInfo += "S";
+    else firstTransInfo += "D";
   } else {
     firstTransInfo += "-";
   }
@@ -1768,9 +1728,6 @@ void iniciarExecucaoAutomatica() {
 }
 
 bool executarPassoAutomatico() {
-  docGlobal.clear();
-  deserializeJson(docGlobal, configAtual);
-
   if (isEstadoFinal(tm.currentState)) {
     Serial.println("Estado final atingido");
     return false;
@@ -1823,9 +1780,6 @@ void iniciarExecucaoPasso() {
 
   tm.headPosition = 0;
   tm.stepCount = 0;
-
-  docGlobal.clear();
-  deserializeJson(docGlobal, configAtual);
   tm.currentState = docGlobal["initialState"] | "q0";
 
   estadoAtual = EXECUTANDO_PASSO;
@@ -1843,8 +1797,7 @@ void iniciarExecucaoPasso() {
   } else if (transition.found) {
     transInfo += transition.nextState + " | " + transition.newSymbol + " | ";
     if (transition.direction == "L") transInfo += "E";
-    else if (transition.direction == "R") transInfo += "D";
-    else transInfo += "S";
+    else transInfo += "D";
   } else {
     transInfo += "-";
   }
@@ -1860,9 +1813,6 @@ void processarExecucaoPasso(int botao) {
 
 void executarProximoPasso() {
   Serial.printf("Executando passo %d\n", tm.stepCount);
-
-  docGlobal.clear();
-  deserializeJson(docGlobal, configAtual);
 
   if (tm.headPosition < 0 || tm.headPosition >= tm.tape.length()) {
     displayMessage("ERRO", "Cabeca fora da fita", 2000);
