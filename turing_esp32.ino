@@ -6,7 +6,7 @@
  * - Display OLED para visualização
  * - Botões físicos para controle
  *
- * Autor: Márcio
+ * Autor: Marcio Lima
  * Projeto: TCC - Ciência da Computação
  */
 
@@ -46,11 +46,11 @@ const int BTN_NEXT = 2;
 // CONFIGURAÇÕES DE REDE
 // ============================================================================
 
-const char* WIFI_SSID = "MARCIO-WIFI";
-const char* WIFI_PASSWORD = "102030405060";
+const char* WIFI_SSID = "";
+const char* WIFI_PASSWORD = "";
 
 const char* AP_SSID = "ESP32_TuringMachine";
-const char* AP_PASSWORD = "123";
+const char* AP_PASSWORD = "12345678";
 
 const int TIMEOUT_WIFI = 10000;
 
@@ -65,6 +65,8 @@ DNSServer dnsServer;
 const byte DNS_PORT = 53;
 
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET);
+
+StaticJsonDocument<8192> docGlobal;
 
 // ============================================================================
 // DECLARAÇÕES ANTECIPADAS
@@ -81,6 +83,12 @@ void displayMessage(String title, String message, int delayMs = 2000);
 // ESTRUTURAS DE DADOS
 // ============================================================================
 
+enum ExecutionMode {
+  MODE_AUTO_NO_DISPLAY,    // Execução automática sem display (API web)
+  MODE_AUTO_WITH_DISPLAY,  // Execução automática com display e animações
+  MODE_STEP_BY_STEP        // Execução passo a passo (controlada externamente)
+};
+
 struct TransitionInfo {
   bool found;
   String nextState;
@@ -96,6 +104,12 @@ struct ExecutionResult {
   String history;
 };
 
+struct StepResult {
+  bool canContinue;        // true = há próxima transição, false = parou (final ou erro)
+  bool reachedFinalState;  // true se parou em estado final
+  String errorMessage;     // mensagem de erro se houver
+};
+
 // ============================================================================
 // PROTÓTIPOS DE FUNÇÕES
 // ============================================================================
@@ -104,7 +118,7 @@ TransitionInfo buscarTransicao(String currentState, char currentSymbol);
 bool isEstadoFinal(String state);
 int aplicarTransicao(TransitionInfo transition, String &tape, int headPosition, String &currentState);
 int aplicarTransicao(TransitionInfo transition);
-void mostrarResultadoFinal(String titulo, String motivo, int passos, bool waitForButton = true);
+void mostrarResultadoFinal(String titulo, String motivo, int passos, String fita = "", bool waitForButton = true);
 
 // ============================================================================
 // CLASSE MÁQUINA DE TURING
@@ -118,15 +132,11 @@ public:
   int stepCount;
 
   static const int MAX_STEPS = 1000;
-  static const int MAX_TAPE_SIZE = 500;
 
-  ExecutionResult execute(String input, bool useDisplay = false, int stepDelay = 500) {
-    ExecutionResult result;
-    result.accepted = false;
-    result.steps = 0;
-    result.message = "";
-    result.history = "[";
-
+  // ============================================================================
+  // MÉTODO UNIFICADO: Inicializa a máquina
+  // ============================================================================
+  void inicializar(String input) {
     String initialState = docGlobal["initialState"] | "q0";
 
     tape = "^" + input;
@@ -136,10 +146,98 @@ public:
     currentState = initialState;
     stepCount = 0;
 
-    Serial.println("\n=== Executando Máquina de Turing ===");
+    Serial.println("\n=== Inicializando Máquina de Turing ===");
     Serial.printf("Entrada: %s\n", input.c_str());
     Serial.printf("Fita inicial: %s\n", tape.c_str());
     Serial.printf("Estado inicial: %s\n", currentState.c_str());
+  }
+
+  // ============================================================================
+  // MÉTODO UNIFICADO: Executa um único passo
+  // ============================================================================
+  StepResult executarPassoUnico(bool useDisplay = false) {
+    StepResult result;
+    result.canContinue = false;
+    result.reachedFinalState = false;
+    result.errorMessage = "";
+
+    // Verificar limites da fita
+    if (headPosition < 0 || headPosition >= tape.length()) {
+      result.errorMessage = "Cabeca fora da fita";
+      Serial.println("Erro: Cabeça saiu da fita");
+      return result;
+    }
+
+    char currentSymbol = tape[headPosition];
+    String symbolStr = String(currentSymbol);
+
+    Serial.printf("Passo %d: Estado=%s, Posição=%d, Símbolo=%c\n",
+                  stepCount, currentState.c_str(), headPosition, currentSymbol);
+
+    // Verificar se já está em estado final
+    if (isEstadoFinal(currentState)) {
+      result.reachedFinalState = true;
+      Serial.println("✓ Estado final atingido!");
+      return result;
+    }
+
+    // Buscar transição
+    TransitionInfo transition = buscarTransicao(currentState, currentSymbol);
+
+    if (!transition.found) {
+      // Não há transição disponível
+      Serial.printf("✗ Sem transição para estado '%s' e símbolo '%s'\n",
+                    currentState.c_str(), symbolStr.c_str());
+      stepCount++;
+      result.errorMessage = "Sem transicao";
+      return result;
+    }
+
+    // Aplicar transição
+    Serial.printf("→ Transição: (%s, %s, %s)\n",
+                  transition.nextState.c_str(),
+                  transition.newSymbol.c_str(),
+                  transition.direction.c_str());
+
+    String oldTape = tape;
+    int oldPosition = headPosition;
+    String oldState = currentState;
+
+    int newPosition = aplicarTransicao(transition, tape, headPosition, currentState);
+
+    // Animação se display ativo
+    if (useDisplay && displayAtivo) {
+      animateTransition(oldTape, tape, oldPosition, newPosition,
+                       oldState, currentState, stepCount);
+    }
+
+    headPosition = newPosition;
+    stepCount++;
+
+    // Verificar se atingiu estado final após a transição
+    if (isEstadoFinal(currentState)) {
+      result.reachedFinalState = true;
+      Serial.println("✓ Transição levou a estado final!");
+      return result;
+    }
+
+    // Pode continuar
+    result.canContinue = true;
+    return result;
+  }
+
+  // ============================================================================
+  // MÉTODO WRAPPER: Execução automática (API e Display)
+  // ============================================================================
+  ExecutionResult execute(String input, bool useDisplay = false, int stepDelay = 500) {
+    ExecutionResult result;
+    result.accepted = false;
+    result.steps = 0;
+    result.message = "";
+    result.history = "[";
+
+    // Inicializar a máquina
+    inicializar(input);
 
     if (useDisplay && displayAtivo) {
       displayMessage("Executando", "Iniciando...", 1000);
@@ -147,21 +245,11 @@ public:
       delay(1000);
     }
 
-    bool transitionFound = true;
-    while (stepCount < MAX_STEPS && transitionFound) {
-      if (headPosition < 0 || headPosition >= tape.length()) {
-        result.message = "Erro: Cabeça saiu da fita";
-        result.finalTape = tape;
-        result.steps = stepCount;
-        result.history += "]";
-        return result;
-      }
-
+    // Loop principal de execução
+    while (stepCount < MAX_STEPS) {
+      // Adicionar estado atual ao histórico
       char currentSymbol = tape[headPosition];
       String symbolStr = String(currentSymbol);
-
-      Serial.printf("Passo %d: Estado=%s, Posição=%d, Símbolo=%c\n",
-                    stepCount, currentState.c_str(), headPosition, currentSymbol);
 
       if (stepCount > 0) result.history += ",";
       result.history += "{";
@@ -172,69 +260,55 @@ public:
       result.history += "\"tape\":\"" + tape + "\"";
       result.history += "}";
 
-      TransitionInfo transition = buscarTransicao(currentState, currentSymbol);
+      // Executar um passo
+      StepResult stepResult = executarPassoUnico(useDisplay);
 
-      if (!transition.found) {
-        Serial.printf("✗ Sem transição para estado '%s' e símbolo '%s'\n",
-                      currentState.c_str(), symbolStr.c_str());
-        transitionFound = false;
-        break;
-      }
-
-      String oldTape = tape;
-      int oldPosition = headPosition;
-      String oldState = currentState;
-
-      Serial.printf("→ Transição: (%s, %s, %s)\n",
-                    transition.nextState.c_str(), transition.newSymbol.c_str(),
-                    transition.direction.c_str());
-
-      int newPosition = aplicarTransicao(transition, tape, headPosition, currentState);
-
-      if (useDisplay && displayAtivo) {
-        animateTransition(oldTape, tape, oldPosition, newPosition,
-                         oldState, currentState, stepCount);
-      }
-
-      headPosition = newPosition;
-      stepCount++;
-
-      if (stepCount >= MAX_STEPS) {
-        result.message = "Timeout: Limite de passos excedido";
-        result.finalTape = tape;
-        result.steps = stepCount;
-        result.history += "]";
-        return result;
-      }
-
-      if (isEstadoFinal(currentState)) {
+      // Verificar resultado
+      if (stepResult.reachedFinalState) {
+        // Sucesso - atingiu estado final
         result.history += "]";
         result.finalTape = tape;
         result.steps = stepCount;
         result.accepted = true;
         result.message = "ACEITO - Estado final";
-        Serial.println("✓ ACEITO! Estado final: " + currentState);
 
         if (useDisplay && displayAtivo) {
-          mostrarResultadoFinal("ACEITO", "Estado final", stepCount, false);
+          mostrarResultadoFinal("ACEITO", "Estado final", stepCount, tape, false);
         }
 
         return result;
       }
+
+      if (!stepResult.canContinue) {
+        // Parou por erro (sem transição ou erro de fita)
+        result.history += "]";
+        result.finalTape = tape;
+        result.steps = stepCount;
+        result.accepted = false;
+        result.message = stepResult.errorMessage.length() > 0 ?
+                        "REJEITADO - " + stepResult.errorMessage :
+                        "REJEITADO - Sem transicao";
+
+        if (useDisplay && displayAtivo) {
+          mostrarResultadoFinal("REJEITADO", stepResult.errorMessage, stepCount, tape, false);
+        }
+
+        return result;
+      }
+
+      // Delay entre passos se usando display
+      if (useDisplay && stepDelay > 0) {
+        delay(stepDelay);
+      }
     }
 
+    // Timeout
     result.history += "]";
     result.finalTape = tape;
     result.steps = stepCount;
     result.accepted = false;
-    result.message = "REJEITADO - Sem transicao";
-    Serial.println("✗ REJEITADO! Sem transição para estado: " + currentState);
-    Serial.printf("Passos executados: %d\n", stepCount);
-    Serial.printf("Fita final: %s\n", tape.c_str());
-
-    if (useDisplay && displayAtivo) {
-      mostrarResultadoFinal("REJEITADO", "Sem transicao", stepCount, false);
-    }
+    result.message = "Timeout: Limite de passos excedido";
+    Serial.println("✗ Timeout: Limite de passos excedido");
 
     return result;
   }
@@ -247,13 +321,9 @@ TuringMachine tm;
 // ============================================================================
 
 bool displayAtivo = false;
-bool maquinaExecutando = false;
-bool maquinaPausada = false;
-bool executarPasso = false;
-int scrollOffset = 0;
 
 unsigned long ultimoDebounce = 0;
-const int DEBOUNCE_DELAY_MS = 400;
+const int DEBOUNCE_DELAY_MS = 300;
 
 // ============================================================================
 // SISTEMA DE NAVEGAÇÃO
@@ -272,19 +342,12 @@ MenuState estadoAtual = MENU_PRINCIPAL;
 int opcaoSelecionada = 0;
 
 String configAtual = "";
-String nomeArquivoAtual = "";
-JsonArray alfabetoFita;
 String entradaUsuario = "";
 int posicaoEditor = 0;
 
 String arquivosDisponiveis[20];
 int numArquivos = 0;
 int arquivoSelecionado = 0;
-
-int passoAtual = 0;
-bool aguardandoProximoPasso = false;
-
-StaticJsonDocument<8192> docGlobal;
 
 // ============================================================================
 // FUNÇÕES DE TRANSIÇÃO
@@ -316,14 +379,11 @@ TransitionInfo buscarTransicao(String currentState, char currentSymbol) {
   result.newSymbol = transition["newSymbol"] | "?";
   result.direction = transition["direction"] | "?";
 
-  if (result.nextState == "" || result.nextState == "?" ||
-      result.newSymbol == "" || result.newSymbol == "?" ||
-      result.direction == "" || result.direction == "?") {
-    result.found = false;
-    result.nextState = "?";
-    result.newSymbol = "?";
-    result.direction = "?";
-    return result;
+  // Se qualquer campo é "?", transição está incompleta
+  if (result.nextState == "?" ||
+      result.newSymbol == "?" ||
+      result.direction == "?") {
+    return result;  // found já é false
   }
 
   result.found = true;
@@ -349,9 +409,9 @@ int aplicarTransicao(TransitionInfo transition, String &tape, int headPosition, 
   currentState = transition.nextState;
 
   int newPosition = headPosition;
-  if (transition.direction == "L") {
+  if (transition.direction == "E") {
     newPosition--;
-  } else if (transition.direction == "R") {
+  } else if (transition.direction == "D") {
     newPosition++;
   }
 
@@ -371,15 +431,11 @@ int aplicarTransicao(TransitionInfo transition) {
 // ============================================================================
 
 bool isSimboloValidoParaEntrada(String simbolo) {
-  return simbolo != "^" && simbolo != "_" && simbolo != "x" && simbolo.length() > 0;
+  return simbolo != "^" && simbolo != "_" && simbolo.length() > 0;
 }
 
 char obterPrimeiroSimboloValido() {
   JsonArray inputAlphabet = docGlobal["alphabet"];
-
-  if (inputAlphabet.size() == 0) {
-    inputAlphabet = alfabetoFita;
-  }
 
   for (int i = 0; i < inputAlphabet.size(); i++) {
     String simbolo = inputAlphabet[i].as<String>();
@@ -393,10 +449,6 @@ char obterPrimeiroSimboloValido() {
 
 String obterSimbolosValidosString() {
   JsonArray inputAlphabet = docGlobal["alphabet"];
-
-  if (inputAlphabet.size() == 0) {
-    inputAlphabet = alfabetoFita;
-  }
 
   String simbolosValidos = "";
   for (int i = 0; i < inputAlphabet.size(); i++) {
@@ -540,7 +592,6 @@ void drawTape(String tape, int headPos, String currentState, int stepCount, Stri
   display.drawFastHLine(0, 10, OLED_WIDTH, SSD1306_WHITE);
 
   int startCell = headPos - 3;
-  scrollOffset = startCell;
 
   int x = 0;
   for (int i = 0; i < VISIBLE_CELLS; i++) {
@@ -590,8 +641,7 @@ void animateTransition(String oldTape, String newTape, int oldPos, int newPos,
   String transInfo = "trans: ";
   if (trans.found) {
     transInfo += trans.nextState + " | " + trans.newSymbol + " | ";
-    if (trans.direction == "L") transInfo += "E";
-    else transInfo += "D";
+    transInfo += trans.direction;
   } else {
     transInfo += "-";
   }
@@ -701,8 +751,7 @@ void animateTransition(String oldTape, String newTape, int oldPos, int newPos,
     nextTransInfo += nextTrans.nextState + " (final)";
   } else if (nextTrans.found) {
     nextTransInfo += nextTrans.nextState + " | " + nextTrans.newSymbol + " | ";
-    if (nextTrans.direction == "L") nextTransInfo += "E";
-    else nextTransInfo += "D";
+    nextTransInfo += nextTrans.direction;
   } else {
     nextTransInfo += "-";
   }
@@ -759,7 +808,7 @@ void mostrarTelaInicial(String ip) {
   }
 }
 
-void mostrarResultadoFinal(String titulo, String motivo, int passos, bool waitForButton) {
+void mostrarResultadoFinal(String titulo, String motivo, int passos, String fita, bool waitForButton) {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
 
@@ -775,7 +824,20 @@ void mostrarResultadoFinal(String titulo, String motivo, int passos, bool waitFo
   display.print("Passos: ");
   display.println(passos);
 
-  if (waitForButton) {
+  // Exibir fita final se fornecida
+  if (fita.length() > 0) {
+    display.setCursor(0, 50);
+    display.print("Fita: ");
+    // Truncar fita se muito longa (máximo ~18 caracteres)
+    if (fita.length() > 15) {
+      display.print(fita.substring(0, 12));
+      display.print("...");
+    } else {
+      display.print(fita);
+    }
+  }
+
+  if (waitForButton && fita.length() == 0) {
     display.setCursor(0, 54);
     display.println("Pressione botao...");
   }
@@ -907,9 +969,6 @@ bool carregarConfiguracao(String nomeArquivo) {
     return false;
   }
 
-  alfabetoFita = docGlobal["tapeAlphabet"];
-  nomeArquivoAtual = nomeArquivo;
-
   String nomeMT = docGlobal["nome"] | "Sem nome";
   String nomeArquivoLimpo = nomeArquivo;
   nomeArquivoLimpo.replace("/", "");
@@ -917,7 +976,7 @@ bool carregarConfiguracao(String nomeArquivo) {
 
   Serial.printf("✓ MT carregada: %s (arquivo: %s)\n", nomeMT.c_str(), nomeArquivoLimpo.c_str());
   Serial.printf("  Estados: %d\n", docGlobal["states"].size());
-  Serial.printf("  Alfabeto: %d símbolos\n", alfabetoFita.size());
+  Serial.printf("  Alfabeto: %d símbolos\n", docGlobal["tapeAlphabet"].size());
 
   return true;
 }
@@ -1018,9 +1077,7 @@ void desenharEditorFita() {
   display.drawFastHLine(0, 10, OLED_WIDTH, SSD1306_WHITE);
 
   display.setCursor(0, 14);
-  String nomeDisplay = nomeArquivoAtual;
-  nomeDisplay.replace("/", "");
-  nomeDisplay.replace(".json", "");
+  String nomeDisplay = docGlobal["nome"] | "Sem nome";
   if (nomeDisplay.length() > 21) {
     nomeDisplay = nomeDisplay.substring(0, 18) + "...";
   }
@@ -1665,21 +1722,14 @@ void processarEditorFita(int botao) {
 // ============================================================================
 
 void iniciarExecucaoAutomatica() {
-  Serial.println("=== Iniciando Execução Automática ===");
-  Serial.printf("Entrada: %s\n", entradaUsuario.c_str());
+  Serial.println("=== Iniciando Execução Automática (Display) ===");
 
-  tm.tape = "^" + entradaUsuario;
-  for (int i = 0; i < 20; i++) tm.tape += "_";
-
-  tm.headPosition = 0;
-  tm.stepCount = 0;
-  tm.currentState = docGlobal["initialState"] | "q0";
-
-  Serial.printf("Estado inicial: %s\n", tm.currentState.c_str());
-  Serial.printf("Fita inicial: %s\n", tm.tape.c_str());
+  // Inicializar a máquina
+  tm.inicializar(entradaUsuario);
 
   displayMessage("Executando", "Iniciando...", 1000);
 
+  // Mostrar estado inicial
   char firstSymbol = tm.tape[tm.headPosition];
   TransitionInfo firstTrans = buscarTransicao(tm.currentState, firstSymbol);
   String firstTransInfo = "trans: ";
@@ -1690,8 +1740,7 @@ void iniciarExecucaoAutomatica() {
     firstTransInfo += firstTrans.nextState + " (final)";
   } else if (firstTrans.found) {
     firstTransInfo += firstTrans.nextState + " | " + firstTrans.newSymbol + " | ";
-    if (firstTrans.direction == "L") firstTransInfo += "E";
-    else firstTransInfo += "D";
+    firstTransInfo += firstTrans.direction;
   } else {
     firstTransInfo += "-";
   }
@@ -1699,92 +1748,41 @@ void iniciarExecucaoAutomatica() {
   drawTape(tm.tape, tm.headPosition, tm.currentState, tm.stepCount, firstTransInfo);
   delay(1000);
 
-  bool continuar = true;
-  int maxSteps = 1000;
+  // Loop de execução
+  while (tm.stepCount < TuringMachine::MAX_STEPS) {
+    StepResult stepResult = tm.executarPassoUnico(true); // true = usar display
 
-  while (continuar && tm.stepCount < maxSteps) {
-    continuar = executarPassoAutomatico();
-
-    if (continuar) {
-      delay(500);
+    if (stepResult.reachedFinalState) {
+      // Sucesso
+      mostrarResultadoFinal("ACEITO", "Estado final", tm.stepCount, tm.tape);
+      break;
     }
+
+    if (!stepResult.canContinue) {
+      // Erro
+      String motivo = stepResult.errorMessage.length() > 0 ?
+                     stepResult.errorMessage : "Sem transicao";
+      mostrarResultadoFinal("REJEITADO", motivo, tm.stepCount, tm.tape);
+      break;
+    }
+
+    delay(500); // Delay entre passos
   }
-
-  bool accepted = isEstadoFinal(tm.currentState);
-  String titulo = accepted ? "ACEITO" : "REJEITADO";
-  String motivo = accepted ? "Estado final" : "Sem transicao";
-
-  Serial.printf("\n=== Resultado: %s ===\n", titulo.c_str());
-  Serial.printf("Motivo: %s\n", motivo.c_str());
-  Serial.printf("Passos executados: %d\n", tm.stepCount);
-  Serial.printf("Estado final: %s\n", tm.currentState.c_str());
-  Serial.printf("Fita final: %s\n", tm.tape.c_str());
-
-  mostrarResultadoFinal(titulo, motivo, tm.stepCount);
 
   estadoAtual = MENU_PRINCIPAL;
   opcaoSelecionada = 0;
   desenharMenuPrincipal();
 }
 
-bool executarPassoAutomatico() {
-  if (isEstadoFinal(tm.currentState)) {
-    Serial.println("Estado final atingido");
-    return false;
-  }
-
-  if (tm.headPosition < 0 || tm.headPosition >= tm.tape.length()) {
-    Serial.println("Erro: Cabeça fora da fita");
-    displayMessage("ERRO", "Cabeca fora da fita", 2000);
-    return false;
-  }
-
-  char currentSymbol = tm.tape[tm.headPosition];
-  Serial.printf("Passo %d: estado=%s, pos=%d, simbolo=%c\n",
-                tm.stepCount, tm.currentState.c_str(), tm.headPosition, currentSymbol);
-
-  TransitionInfo transition = buscarTransicao(tm.currentState, currentSymbol);
-
-  if (!transition.found) {
-    Serial.println("Sem transição disponível");
-    return false;
-  }
-
-  Serial.printf("Transição: (%s, %s, %s)\n",
-                transition.nextState.c_str(), transition.newSymbol.c_str(), transition.direction.c_str());
-
-  String oldTape = tm.tape;
-  int oldPosition = tm.headPosition;
-  String oldState = tm.currentState;
-
-  int newPosition = aplicarTransicao(transition);
-  animateTransition(oldTape, tm.tape, oldPosition, newPosition,
-                     oldState, tm.currentState, tm.stepCount);
-
-  tm.headPosition = newPosition;
-  tm.stepCount++;
-
-  if (isEstadoFinal(tm.currentState)) {
-    return false;
-  }
-
-  return true;
-}
-
 void iniciarExecucaoPasso() {
   Serial.println("=== Iniciando Execução Passo-a-Passo ===");
-  Serial.printf("Entrada: %s\n", entradaUsuario.c_str());
 
-  tm.tape = "^" + entradaUsuario;
-  for (int i = 0; i < 20; i++) tm.tape += "_";
-
-  tm.headPosition = 0;
-  tm.stepCount = 0;
-  tm.currentState = docGlobal["initialState"] | "q0";
+  // Inicializar a máquina
+  tm.inicializar(entradaUsuario);
 
   estadoAtual = EXECUTANDO_PASSO;
-  aguardandoProximoPasso = true;
 
+  // Mostrar estado inicial com informação de transição
   char currentSymbol = tm.tape[tm.headPosition];
   TransitionInfo transition = buscarTransicao(tm.currentState, currentSymbol);
 
@@ -1796,8 +1794,7 @@ void iniciarExecucaoPasso() {
     transInfo += transition.nextState + " (final)";
   } else if (transition.found) {
     transInfo += transition.nextState + " | " + transition.newSymbol + " | ";
-    if (transition.direction == "L") transInfo += "E";
-    else transInfo += "D";
+    transInfo += transition.direction;
   } else {
     transInfo += "-";
   }
@@ -1814,62 +1811,41 @@ void processarExecucaoPasso(int botao) {
 void executarProximoPasso() {
   Serial.printf("Executando passo %d\n", tm.stepCount);
 
-  if (tm.headPosition < 0 || tm.headPosition >= tm.tape.length()) {
-    displayMessage("ERRO", "Cabeca fora da fita", 2000);
-    estadoAtual = MENU_PRINCIPAL;
-    opcaoSelecionada = 0;
-    desenharMenuPrincipal();
-    return;
-  }
-
-  char currentSymbol = tm.tape[tm.headPosition];
-  TransitionInfo transition = buscarTransicao(tm.currentState, currentSymbol);
-
-  if (isEstadoFinal(tm.currentState) && !transition.found) {
-    mostrarResultadoFinal("ACEITO", "Estado final", tm.stepCount);
-    estadoAtual = MENU_PRINCIPAL;
-    opcaoSelecionada = 0;
-    desenharMenuPrincipal();
-    return;
-  }
-
-  if (!transition.found) {
-    mostrarResultadoFinal("REJEITADO", "Sem transicao", tm.stepCount);
-    estadoAtual = MENU_PRINCIPAL;
-    opcaoSelecionada = 0;
-    desenharMenuPrincipal();
-    return;
-  }
-
-  String oldTape = tm.tape;
-  int oldPosition = tm.headPosition;
-  String oldState = tm.currentState;
-
-  int newPosition = aplicarTransicao(transition);
-  animateTransition(oldTape, tm.tape, oldPosition, newPosition,
-                     oldState, tm.currentState, tm.stepCount);
-
-  tm.headPosition = newPosition;
-  tm.stepCount++;
-
+  // Verificar se já está em estado final antes de tentar executar
   if (isEstadoFinal(tm.currentState)) {
-    mostrarResultadoFinal("ACEITO", "Estado final", tm.stepCount);
+    mostrarResultadoFinal("ACEITO", "Estado final", tm.stepCount, tm.tape);
     estadoAtual = MENU_PRINCIPAL;
     opcaoSelecionada = 0;
     desenharMenuPrincipal();
     return;
   }
 
-  char nextSymbol = tm.tape[tm.headPosition];
-  TransitionInfo nextTrans = buscarTransicao(tm.currentState, nextSymbol);
+  // Executar um passo
+  StepResult stepResult = tm.executarPassoUnico(true); // true = usar display com animação
 
-  if (!nextTrans.found) {
-    mostrarResultadoFinal("REJEITADO", "Sem transicao", tm.stepCount);
+  // Processar resultado
+  if (stepResult.reachedFinalState) {
+    // Sucesso - atingiu estado final
+    mostrarResultadoFinal("ACEITO", "Estado final", tm.stepCount, tm.tape);
     estadoAtual = MENU_PRINCIPAL;
     opcaoSelecionada = 0;
     desenharMenuPrincipal();
     return;
   }
+
+  if (!stepResult.canContinue) {
+    // Erro - sem transição ou fora da fita
+    String motivo = stepResult.errorMessage.length() > 0 ?
+                   stepResult.errorMessage : "Sem transicao";
+    mostrarResultadoFinal("REJEITADO", motivo, tm.stepCount, tm.tape);
+    estadoAtual = MENU_PRINCIPAL;
+    opcaoSelecionada = 0;
+    desenharMenuPrincipal();
+    return;
+  }
+
+  // Continua executando - não faz nada aqui, aguarda próximo botão
+  // A animação já mostrou a próxima transição (ou '-' se não houver)
 }
 
 void processarResultadoFinal(int botao) {

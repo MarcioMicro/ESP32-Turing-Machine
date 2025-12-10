@@ -199,10 +199,35 @@ function generateTable() {
         return;
     }
 
-    // Capturar nome e descrição
+    // Configurar estado inicial da máquina
     const machineName = document.getElementById('machine-name').value.trim();
     const machineDescription = document.getElementById('machine-description').value.trim();
 
+    state.turingMachine = {
+        alphabet: [],
+        tapeAlphabet: [],
+        states: ['q0'],
+        initialState: 'q0',
+        finalStates: [],
+        transitions: {}
+    };
+
+    state.stateCounter = 1;
+
+    // Configurar interface com estado inicial
+    const statesContainer = document.getElementById('states-container');
+    statesContainer.innerHTML = '';
+
+    const stateDiv = document.createElement('div');
+    stateDiv.className = 'state-item state-initial';
+    stateDiv.dataset.state = 'q0';
+    stateDiv.innerHTML = `
+        <span class="state-name">→ q0</span>
+        <span class="state-label">(inicial)</span>
+    `;
+    statesContainer.appendChild(stateDiv);
+
+    // Adicionar nome e descrição se fornecidos
     if (machineName) {
         state.turingMachine.nome = machineName;
     }
@@ -233,6 +258,9 @@ function generateTable() {
 
     // Gerar tabela de transições
     buildTransitionTable();
+
+    // Atualizar displays de estados
+    updateStateDisplays();
 
     state.tableGenerated = true;
 
@@ -387,7 +415,7 @@ function addTransitionRow(tbody, stateName, symbol) {
 
     // Coluna 5: Direção (select)
     const directionCell = row.insertCell();
-    const directionSelect = createSelect(['L', 'R', 'S'], stateName, symbol, 'direction');
+    const directionSelect = createSelect(['E', 'D'], stateName, symbol, 'direction');
     directionCell.appendChild(directionSelect);
 }
 
@@ -412,7 +440,7 @@ function createSelect(options, stateName, symbol, type) {
         option.value = opt;
 
         if (type === 'direction') {
-            option.textContent = opt === 'L' ? '← L' : opt === 'R' ? '→ R' : '• S';
+            option.textContent = opt === 'E' ? '← E' : '→ D';
         } else {
             option.textContent = opt;
         }
@@ -504,7 +532,7 @@ function updateVisualization() {
     const thead = document.getElementById('visualization-head');
     const tbody = document.getElementById('visualization-body');
 
-    // Limpar
+    // Limpar tabela existente
     thead.innerHTML = '';
     tbody.innerHTML = '';
 
@@ -549,7 +577,7 @@ function updateVisualization() {
             const trans = state.turingMachine.transitions[stateName]?.[symbol];
 
             if (trans && trans.nextState && trans.newSymbol && trans.direction) {
-                const dirSymbol = trans.direction === 'L' ? '←' : trans.direction === 'R' ? '→' : '•';
+                const dirSymbol = trans.direction === 'E' ? '←' : trans.direction === 'D' ? '→' : '•';
                 cell.textContent = `(${trans.nextState}, ${trans.newSymbol}, ${dirSymbol})`;
                 cell.style.fontSize = '0.85rem';
             } else {
@@ -924,13 +952,50 @@ function displayExecutionResult(result) {
         output += 'Histórico de Execução:\n';
         output += '═══════════════════════════════════\n\n';
 
-        result.history.forEach((step) => {
-            output += `Passo ${step.step}:\n`;
-            output += `  Estado: ${step.state}\n`;
-            output += `  Posição: ${step.position}\n`;
-            output += `  Símbolo: ${step.symbol}\n`;
-            output += `  Fita: ${step.tape}\n\n`;
+        result.history.forEach((step, index) => {
+            // Passo 0 é o estado inicial
+            if (step.step === 0) {
+                output += `[Passo 0] Estado Inicial\n`;
+                output += `  Estado: ${step.state} | Posição: ${step.position} | Símbolo lido: ${step.symbol}\n`;
+                output += `  Fita: ${step.tape}\n`;
+                output += `        ${' '.repeat(step.position)}↑\n\n`;
+                return;
+            }
+
+            // Calcular transição comparando com passo anterior
+            const prevStep = result.history[index - 1];
+            const fromState = prevStep.state;
+            const fromSymbol = prevStep.symbol;
+            const toState = step.state;
+            const writtenSymbol = step.tape[prevStep.position];
+
+            // Determinar direção
+            let direction = '?';
+            if (step.position > prevStep.position) {
+                direction = 'D (→)';
+            } else if (step.position < prevStep.position) {
+                direction = 'E (←)';
+            } else {
+                direction = 'S (-)';
+            }
+
+            // Exibir transição aplicada
+            output += `[Passo ${step.step}] Transição: (${fromState}, ${fromSymbol}) → (${toState}, ${writtenSymbol}, ${direction})\n`;
+            output += `  Estado: ${step.state} | Posição: ${step.position} | Símbolo lido: ${step.symbol}\n`;
+            output += `  Fita: ${step.tape}\n`;
+            output += `        ${' '.repeat(step.position)}↑\n\n`;
         });
+
+        // Adicionar estado final se necessário
+        if (result.accepted) {
+            const lastStep = result.history[result.history.length - 1];
+            output += `[Passo ${result.steps}] ✓ ESTADO FINAL ATINGIDO\n`;
+            output += `  Estado: ${lastStep.state} (FINAL)\n`;
+            output += `  Fita: ${result.finalTape}\n`;
+        } else {
+            output += `[Passo ${result.steps}] ✗ EXECUÇÃO INTERROMPIDA\n`;
+            output += `  Motivo: ${result.message}\n`;
+        }
     }
 
     resultContent.textContent = output;
@@ -1034,6 +1099,83 @@ async function startStepMode() {
         showToast('Erro ao conectar com ESP32: ' + error.message, 'error');
     }
 }
+
+// ============================================================================
+// Upload de JSON do Computador
+// ============================================================================
+
+/**
+ * Carrega uma configuração JSON de um arquivo local
+ */
+function loadJSONFromFile() {
+    const fileInput = document.getElementById('upload-json');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showToast('Nenhum arquivo selecionado', 'error');
+        return;
+    }
+
+    if (!file.name.endsWith('.json')) {
+        showToast('Por favor, selecione um arquivo .json', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            const jsonContent = e.target.result;
+            const data = JSON.parse(jsonContent);
+
+            // Validar estrutura básica do JSON
+            if (!data.alphabet || !data.tapeAlphabet || !data.states ||
+                !data.initialState || !data.finalStates || !data.transitions) {
+                showToast('JSON inválido: faltam campos obrigatórios (alphabet, tapeAlphabet, states, initialState, finalStates, transitions)', 'error');
+                return;
+            }
+
+            // Restaurar estado (mesma lógica de loadMachine)
+            state.turingMachine = data;
+            state.stateCounter = data.states.length;
+            state.tableGenerated = true;
+
+            // Atualizar interface (mesma lógica de loadMachine)
+            document.getElementById('alphabet').value = data.alphabet.join('');
+            const auxiliarySymbols = data.tapeAlphabet.filter(s => !data.alphabet.includes(s) && s !== '^' && s !== '_');
+            document.getElementById('tape-alphabet').value = auxiliarySymbols.join('');
+
+            // Preencher nome e descrição se existirem
+            if (data.nome) {
+                document.getElementById('machine-name').value = data.nome;
+            }
+
+            if (data.descricao) {
+                const descField = document.getElementById('machine-description');
+                descField.value = data.descricao;
+                descField.style.display = 'block';
+            }
+
+            // Reconstruir interface
+            rebuildInterface();
+
+            showToast(`✓ JSON carregado: ${file.name}`, 'success');
+
+        } catch (error) {
+            console.error('Erro ao processar JSON:', error);
+            showToast('Erro ao ler arquivo JSON: ' + error.message, 'error');
+        }
+    };
+
+    reader.onerror = function() {
+        showToast('Erro ao ler arquivo', 'error');
+    };
+
+    reader.readAsText(file);
+}
+
+// Event listener para upload de JSON
+document.getElementById('upload-json').addEventListener('change', loadJSONFromFile);
 
 // ============================================================================
 // Fim do arquivo

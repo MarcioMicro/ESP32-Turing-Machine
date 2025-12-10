@@ -152,6 +152,13 @@
                 <button id="copy-json-btn" class="btn btn-secondary">📋 Copiar JSON</button>
             </div>
 
+            <div class="input-group" style="margin-top: 20px;">
+                <label for="upload-json">Carregar JSON do Computador:</label>
+                <input type="file" id="upload-json" accept=".json" style="display: none;">
+                <button onclick="document.getElementById('upload-json').click()" class="btn btn-accent">📤 Upload JSON</button>
+                <small>Carrega uma configuração JSON do seu computador</small>
+            </div>
+
             <div id="saved-files-section" style="margin-top: 20px; display: none;">
                 <h3>Arquivos Salvos:</h3>
                 <ul id="saved-files-list"></ul>

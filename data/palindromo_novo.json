@@ -1,0 +1,137 @@
+{
+  "alphabet": [
+    "0",
+    "1"
+  ],
+  "tapeAlphabet": [
+    "0",
+    "1",
+    "x",
+    "^",
+    "_"
+  ],
+  "states": [
+    "q0",
+    "q1",
+    "q2",
+    "q3",
+    "q4",
+    "q5",
+    "q6"
+  ],
+  "initialState": "q0",
+  "finalStates": [
+    "q6"
+  ],
+  "transitions": {
+    "q0": {
+      "0": {
+        "nextState": "q1",
+        "newSymbol": "x",
+        "direction": "D"
+      },
+      "1": {
+        "nextState": "q2",
+        "newSymbol": "x",
+        "direction": "D"
+      },
+      "^": {
+        "nextState": "q0",
+        "newSymbol": "^",
+        "direction": "D"
+      },
+      "x": {
+        "nextState": "q6",
+        "newSymbol": "x",
+        "direction": "D"
+      }
+    },
+    "q1": {
+      "0": {
+        "nextState": "q1",
+        "newSymbol": "0",
+        "direction": "D"
+      },
+      "1": {
+        "nextState": "q1",
+        "newSymbol": "1",
+        "direction": "D"
+      },
+      "_": {
+        "nextState": "q3",
+        "newSymbol": "_",
+        "direction": "E"
+      },
+      "x": {
+        "nextState": "q3",
+        "newSymbol": "x",
+        "direction": "E"
+      }
+    },
+    "q2": {
+      "0": {
+        "nextState": "q2",
+        "newSymbol": "0",
+        "direction": "D"
+      },
+      "1": {
+        "nextState": "q2",
+        "newSymbol": "1",
+        "direction": "D"
+      },
+      "_": {
+        "nextState": "q4",
+        "newSymbol": "_",
+        "direction": "E"
+      },
+      "x": {
+        "nextState": "q4",
+        "newSymbol": "x",
+        "direction": "E"
+      }
+    },
+    "q3": {
+      "0": {
+        "nextState": "q5",
+        "newSymbol": "x",
+        "direction": "E"
+      },
+      "x": {
+        "nextState": "q6",
+        "newSymbol": "x",
+        "direction": "D"
+      }
+    },
+    "q4": {
+      "1": {
+        "nextState": "q5",
+        "newSymbol": "x",
+        "direction": "E"
+      },
+      "x": {
+        "nextState": "q6",
+        "newSymbol": "x",
+        "direction": "D"
+      }
+    },
+    "q5": {
+      "0": {
+        "nextState": "q5",
+        "newSymbol": "0",
+        "direction": "E"
+      },
+      "1": {
+        "nextState": "q5",
+        "newSymbol": "1",
+        "direction": "E"
+      },
+      "x": {
+        "nextState": "q0",
+        "newSymbol": "x",
+        "direction": "D"
+      }
+    }
+  },
+  "nome": "Verificador de Palíndromo binário 2.0",
+  "descricao": "Verificador de Palíndromo binário reformulado"
+}

@@ -30,122 +30,122 @@
       "0": {
         "nextState": "q0",
         "newSymbol": "0",
-        "direction": "L"
+        "direction": "E"
       },
       "1": {
         "nextState": "q0",
         "newSymbol": "1",
-        "direction": "L"
+        "direction": "E"
       },
       "^": {
         "nextState": "q1",
         "newSymbol": "^",
-        "direction": "R"
+        "direction": "D"
       },
       "x": {
         "nextState": "q0",
         "newSymbol": "x",
-        "direction": "L"
+        "direction": "E"
       }
     },
     "q1": {
       "0": {
         "nextState": "q2",
         "newSymbol": "x",
-        "direction": "R"
+        "direction": "D"
       },
       "1": {
         "nextState": "q3",
         "newSymbol": "x",
-        "direction": "R"
+        "direction": "D"
       },
       "x": {
         "nextState": "q1",
         "newSymbol": "x",
-        "direction": "R"
+        "direction": "D"
       },
       "_": {
         "nextState": "q_accept",
         "newSymbol": "_",
-        "direction": "R"
+        "direction": "D"
       }
     },
     "q2": {
       "0": {
         "nextState": "q2",
         "newSymbol": "0",
-        "direction": "R"
+        "direction": "D"
       },
       "1": {
         "nextState": "q2",
         "newSymbol": "1",
-        "direction": "R"
+        "direction": "D"
       },
       "x": {
         "nextState": "q2",
         "newSymbol": "x",
-        "direction": "R"
+        "direction": "D"
       },
       "_": {
         "nextState": "q4",
         "newSymbol": "_",
-        "direction": "L"
+        "direction": "E"
       }
     },
     "q3": {
       "0": {
         "nextState": "q3",
         "newSymbol": "0",
-        "direction": "R"
+        "direction": "D"
       },
       "1": {
         "nextState": "q3",
         "newSymbol": "1",
-        "direction": "R"
+        "direction": "D"
       },
       "x": {
         "nextState": "q3",
         "newSymbol": "x",
-        "direction": "R"
+        "direction": "D"
       },
       "_": {
         "nextState": "q5",
         "newSymbol": "_",
-        "direction": "L"
+        "direction": "E"
       }
     },
     "q4": {
       "0": {
         "nextState": "q0",
         "newSymbol": "x",
-        "direction": "L"
+        "direction": "E"
       },
       "x": {
         "nextState": "q4",
         "newSymbol": "x",
-        "direction": "L"
+        "direction": "E"
       },
       "^": {
         "nextState": "q0",
         "newSymbol": "^",
-        "direction": "R"
+        "direction": "D"
       }
     },
     "q5": {
       "1": {
         "nextState": "q0",
         "newSymbol": "x",
-        "direction": "L"
+        "direction": "E"
       },
       "x": {
         "nextState": "q5",
         "newSymbol": "x",
-        "direction": "L"
+        "direction": "E"
       },
       "^": {
         "nextState": "q0",
         "newSymbol": "^",
-        "direction": "R"
+        "direction": "D"
       }
     }
   },

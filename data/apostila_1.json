@@ -1,0 +1,115 @@
+{
+  "alphabet": [
+    "a",
+    "b"
+  ],
+  "tapeAlphabet": [
+    "a",
+    "b",
+    "X",
+    "Y",
+    "^",
+    "_"
+  ],
+  "states": [
+    "q0",
+    "q1",
+    "q2",
+    "q3",
+    "q4",
+    "q5"
+  ],
+  "initialState": "q0",
+  "finalStates": [
+    "q5"
+  ],
+  "transitions": {
+    "q0": {
+      "^": {
+        "nextState": "q0",
+        "newSymbol": "^",
+        "direction": "D"
+      },
+      "a": {
+        "nextState": "q0",
+        "newSymbol": "a",
+        "direction": "D"
+      },
+      "b": {
+        "nextState": "q1",
+        "newSymbol": "Y",
+        "direction": "D"
+      }
+    },
+    "q1": {
+      "b": {
+        "nextState": "q2",
+        "newSymbol": "Y",
+        "direction": "E"
+      }
+    },
+    "q2": {
+      "a": {
+        "nextState": "q3",
+        "newSymbol": "X",
+        "direction": "D"
+      },
+      "X": {
+        "nextState": "q2",
+        "newSymbol": "X",
+        "direction": "E"
+      },
+      "Y": {
+        "nextState": "q2",
+        "newSymbol": "Y",
+        "direction": "E"
+      }
+    },
+    "q3": {
+      "b": {
+        "nextState": "q1",
+        "newSymbol": "Y",
+        "direction": "D"
+      },
+      "X": {
+        "nextState": "q3",
+        "newSymbol": "X",
+        "direction": "D"
+      },
+      "Y": {
+        "nextState": "q3",
+        "newSymbol": "Y",
+        "direction": "D"
+      },
+      "_": {
+        "nextState": "q4",
+        "newSymbol": "_",
+        "direction": "E"
+      }
+    },
+    "q4": {
+      "a": {
+        "nextState": "",
+        "newSymbol": "",
+        "direction": ""
+      },
+      "^": {
+        "nextState": "q5",
+        "newSymbol": "^",
+        "direction": "D"
+      },
+      "X": {
+        "nextState": "q4",
+        "newSymbol": "X",
+        "direction": "E"
+      },
+      "Y": {
+        "nextState": "q4",
+        "newSymbol": "Y",
+        "direction": "E"
+      }
+    }
+  },
+  "nome": "apostila_1",
+  "descricao": "Exercício 1 da apostila de compiladores (Página 63)."
+}
